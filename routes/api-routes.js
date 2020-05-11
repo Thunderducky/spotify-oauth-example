@@ -1,6 +1,19 @@
 // Requiring our models and passport as we've configured it
 var db = require("../models");
+const path = require("path");
+const axios = require("axios");
 var passport = require("../config/passport");
+
+const SCOPES = ["playlist-read-private"];
+const CALLBACK_URL = process.env.CALLBACK_URL || "http://localhost:3000/api/spotify/callback";
+
+function buildSpotifyRedirectUrl(){
+  const url = `https://accounts.spotify.com/authorize` +
+    `?client_id=${process.env.SPOTIFY_CLIENT_ID}`
+    +`&response_type=token&redirect_uri=${CALLBACK_URL}`
+    +`&scope=${SCOPES.join("%20")}`;
+    return url;
+}
 
 module.exports = function(app) {
   // Using the passport.authenticate middleware with our local strategy.
@@ -46,4 +59,89 @@ module.exports = function(app) {
       });
     }
   });
+
+  app.get("/api/spotify/link", function(req, res){
+    if(req.user){
+      res.json({
+        success: true,
+        redirect_url: buildSpotifyRedirectUrl()
+      })
+    } else {
+      res.status(401).json({
+        success: false,
+        error: "you must be logged in to perform this action"
+      })
+    }
+  })
+  app.post("/api/spotify/connect", function(req, res){
+    console.log(req.body);
+    if(req.user){
+      req.user.spotifyAccessToken = req.body.access_token
+      req.user.save().then(() => {
+        res.json({
+          success: true,
+        })
+      }).catch(() => {
+        res.status(500).json({
+          success:false
+        })
+      })
+      
+    } else {
+      res.status(401).json({
+        success: false,
+        error: "you must be logged in to perform this action"
+      })
+    }
+  })
+
+  app.get("/api/spotify/link", function(req, res){
+    if(req.user){
+      res.json({
+        success: true,
+        redirect_url: buildSpotifyRedirectUrl()
+      })
+    } else {
+      res.status(401).json({
+        success: false,
+        error: "you must be logged in to perform this action"
+      })
+    }
+    
+  })
+  app.get("/api/spotify/callback", function(req, res){
+    if(req.user){
+      res.sendFile(path.join(__dirname, "../public/callback.html"));
+    } else {
+      res.status(401).json({
+        success: false,
+        error: "you must be logged in to perform this action"
+      })
+    }
+    
+  })
+  app.get("/api/spotify/playlists", function(req, res){
+    if(req.user){
+      if(req.user.spotifyAccessToken){
+        axios.get("https://api.spotify.com/v1/me/playlists", {
+          headers: {
+            "Authorization": `Bearer ${req.user.spotifyAccessToken}`
+          }
+        }).then(response => {
+          console.log(response);
+          res.json(response.data);
+        })
+      } else {
+        res.status(401).json({
+          success: false,
+          error: "your account must be connected to spotify"
+        })
+      }
+    } else {
+      res.status(401).json({
+        success: false,
+        error: "you must be logged in to perform this action"
+      })
+    }
+  })
 };

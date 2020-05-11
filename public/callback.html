@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <title>Callback</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.2.1/jquery.min.js"></script>
+</head>
+<body>
+    Redirecting
+    <script type="text/javascript">
+        console.log(window.location.href);
+        const response = window.location.href.split("#")[1];
+        console.log(response);
+        const obj = {};
+        response.split("&").map(str => {
+            const [key, value] = str.split("=")
+            obj[key] = value;
+        })
+        console.log(obj);
+        $.post("/api/spotify/connect", obj).then(response => {
+            console.log(response);
+            window.location.href="/members"
+        });
+    </script>
+</body>
+</html>
